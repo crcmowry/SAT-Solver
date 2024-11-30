@@ -3,34 +3,57 @@
 
 #include <vector>
 #include <unordered_set>
-#include <iostream>
+#include <unordered_map>
+#include <string>
+
+// Heuristic enum for branching strategies
+enum class Heuristic {
+    NAIVE,
+    MOMS,
+    DLIS,
+    RANDOM
+};
+
+// Converts a heuristic enum to a string representation
+std::string heuristicToString(Heuristic heuristic);  // Add this line
 
 class SATSolver {
 public:
-    // Type aliases for readability
-    using Clause = std::vector<int>;          // Represents a single clause
-    using Formula = std::vector<Clause>;      // Represents a CNF formula
-    using Assignment = std::unordered_set<int>;  // Stores assigned literals (positive for True, negative for False)
+    using Clause = std::vector<int>;
+    using Formula = std::vector<Clause>;
+    using Assignment = std::unordered_set<int>;
 
-    // Public method to solve a SAT problem
+    SATSolver() : heuristic(Heuristic::NAIVE) {}
+
     bool solve(const Formula& formula);
 
+    void setHeuristic(Heuristic h) { heuristic = h; }
+
+    void logHeuristicSummary(Heuristic heuristic, bool result, double time) const;
+
 private:
-    // Core DPLL algorithm
     bool DPLL(Formula formula, Assignment& assignment);
-
-    // Helper methods for DPLL
-    bool isSatisfied(const Formula& formula) const;     // Check if the formula is satisfied
-    bool hasEmptyClause(const Formula& formula) const;  // Check if the formula contains an empty clause
-    Formula propagate(Formula formula, int literal, Assignment& assignment);  // Perform propagation for a literal
+    bool isSatisfied(const Formula& formula) const;
+    bool hasEmptyClause(const Formula& formula) const;
+    int findUnitClause(const Formula& formula) const;
+    int findPureLiteral(const Formula& formula) const;
+    Formula propagate(Formula formula, int literal, Assignment& assignment) const;
     void undoPropagatedLiterals(Assignment& assignment, const std::vector<int>& propagatedLiterals) const;
-    int selectVariable(const Formula& formula) const;   // Choose a literal to branch on
-    int findUnitClause(const Formula& formula) const;   // Find a unit clause, if any
-    int findPureLiteral(const Formula& formula) const;  // Find a pure literal, if any
+    int selectLiteral(const Formula& formula) const;
+    int selectNaive(const Formula& formula) const;
+    int selectMOMS(const Formula& formula) const;
+    int selectDLIS(const Formula& formula) const;
+    int selectRandom(const Formula& formula) const;
 
-    // Debugging and utility
-    void printFormula(const Formula& formula, int logLevel) const;  // Print the current assignment
-    void printAssignment(const Assignment& assignment, int logLevel) const;  // Print the current assignment
+    void printFormula(const Formula& formula, int logLevel) const;
+    void printAssignment(const Assignment& assignment, int logLevel) const;
+
+    Heuristic heuristic;
+
+    // Metrics and results
+    mutable Assignment finalAssignment; // Store the final assignment
+    mutable int decisions;             // Count the number of decisions made
+    mutable int backtracks;            // Count the number of backtracks
 };
 
 #endif // SAT_SOLVER_H
