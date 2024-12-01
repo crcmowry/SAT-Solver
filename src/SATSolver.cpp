@@ -8,11 +8,21 @@
 
 // Main entry point for solving a SAT problem
 bool SATSolver::solve(const Formula& formula) {
-    finalAssignment.clear();
-    decisions = 0;
-    backtracks = 0;
+    // Initialize DSIDS scores if using the DSIDS heuristic
+    if (heuristic == Heuristic::DSIDS) {
+        initializeDSIDS(formula);
+    }
 
-    return DPLL(formula, finalAssignment);
+    Assignment assignment;
+    decisions = 0, backtracks = 0;
+
+    if (DPLL(formula, assignment)) {
+        finalAssignment = assignment;
+        return true;
+    } else {
+        finalAssignment.clear();
+        return false;
+    }
 }
 
 // Recursive DPLL algorithm
@@ -56,9 +66,21 @@ bool SATSolver::DPLL(Formula formula, Assignment& assignment) {
         return false;
     }
 
-    int literal = selectLiteral(formula);
+    int literal = selectLiteral(formula); // Select the next literal to assign
     Logger::logf(2, "Choosing literal: %", literal);
-    decisions++; // Increment decisions
+
+    if (heuristic == Heuristic::DSIDS) {
+        // Update scores for DSIDS based on the selected literal
+        updateScores(literal, formula);
+
+        // Decay scores periodically (e.g., every 10 decisions)
+        if (decisions % 10 == 0 && decisions > 0) {
+            Logger::log(3, "Decaying DSIDS scores...");
+            decayScores();
+        }
+    }
+
+    decisions++; // Increment the decision counter
 
     // Try assigning True
     Logger::logf(2, "Trying literal % = True", literal);
@@ -97,6 +119,7 @@ int SATSolver::selectLiteral(const Formula& formula) const {
         case Heuristic::NAIVE: return selectNaive(formula);
         case Heuristic::MOMS: return selectMOMS(formula);
         case Heuristic::DLIS: return selectDLIS(formula);
+        case Heuristic::DSIDS: return selectDSIDS(formula);
         case Heuristic::RANDOM: return selectRandom(formula);
         default: throw std::runtime_error("Unknown heuristic");
     }
@@ -107,14 +130,11 @@ void SATSolver::logHeuristicSummary(Heuristic heuristic, bool result, double tim
     // Add a line separator between normal logging and summary
     Logger::log(0, "-----------------------------------");
     
-    // Log result and time taken at level 0
+    Logger::logf(1, "Heuristic: %", heuristicToString(heuristic));
     Logger::logf(0, "Result: %", result ? "SATISFIABLE" : "UNSATISFIABLE");
     Logger::logf(0, "Time taken: % seconds", timeTaken);
-
-    // Log heuristic, assignment, decisions, and backtracks at level 1
-    Logger::logf(1, "Heuristic: %", heuristicToString(heuristic));
     Logger::log(1, "Assignment:");
-    printAssignment(finalAssignment, 1); // Use Logger-controlled log level for assignment
+    printAssignment(finalAssignment, 1);
     Logger::logf(1, "Decisions made: %", decisions);
     Logger::logf(1, "Backtracks: %", backtracks);
 
@@ -131,6 +151,8 @@ std::string heuristicToString(Heuristic heuristic) {
             return "moms";
         case Heuristic::DLIS:
             return "dlis";
+        case Heuristic::DSIDS:
+            return "dsids";
         case Heuristic::RANDOM:
             return "random";
         default:
@@ -200,6 +222,61 @@ int SATSolver::selectDLIS(const Formula& formula) const {
     }
 
     return bestLiteral;
+}
+
+// DSIDS heuristic: select the literal with the highest score
+int SATSolver::selectDSIDS(const Formula& formula) const {
+    std::unordered_map<int, double> filteredScores;
+
+    // Filter scores based on literals in the formula
+    for (const auto& clause : formula) {
+        for (int literal : clause) {
+            filteredScores[abs(literal)] = literalScores.at(abs(literal));
+        }
+    }
+
+    // Select the literal with the highest filtered score
+    auto best = std::max_element(filteredScores.begin(), filteredScores.end(),
+                                 [](const auto& a, const auto& b) { return a.second < b.second; });
+
+    return best->first; // Return the literal with the highest filtered score
+}
+
+// Initialize DSIDS scores
+void SATSolver::initializeDSIDS(const Formula& formula) {
+    literalScores.clear();
+    for (const auto& clause : formula) {
+        for (int literal : clause) {
+            literalScores[abs(literal)] = 0.0;
+        }
+    }
+}
+
+// Update DSIDS scores based on the selected literal
+void SATSolver::updateScores(int literal, const Formula& formula) {
+    for (const auto& clause : formula) {
+        // Skip clauses that are already satisfied
+        if (std::find(clause.begin(), clause.end(), literal) != clause.end()) {
+            continue; // Literal satisfies the clause
+        }
+
+        // Reward literals in reduced clauses (remaining after propagation)
+        bool clauseReduced = std::find(clause.begin(), clause.end(), -literal) != clause.end();
+        if (clauseReduced) {
+            for (int lit : clause) {
+                if (lit != -literal) { // Do not reward the negation of the chosen literal
+                    literalScores[abs(lit)] += 1.0; // Reward this literal
+                }
+            }
+        }
+    }
+}
+
+// Decay DSIDS scores to prioritize recent activity
+void SATSolver::decayScores() {
+    for (auto& [literal, score] : literalScores) {
+        score *= decayFactor;
+    }
 }
 
 int SATSolver::selectRandom(const Formula& formula) const {

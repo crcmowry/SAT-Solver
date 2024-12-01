@@ -11,6 +11,7 @@ enum class Heuristic {
     NAIVE,
     MOMS,
     DLIS,
+    DSIDS,
     RANDOM
 };
 
@@ -43,10 +44,21 @@ private:
     int selectNaive(const Formula& formula) const;
     int selectMOMS(const Formula& formula) const;
     int selectDLIS(const Formula& formula) const;
+    int selectDSIDS(const Formula& formula) const;
     int selectRandom(const Formula& formula) const;
 
     void printFormula(const Formula& formula, int logLevel) const;
     void printAssignment(const Assignment& assignment, int logLevel) const;
+
+    // DSIDS-specific data
+    mutable std::unordered_map<int, double> literalScores; // Dynamic scores for literals
+    double decayFactor = 0.95;                             // Score decay factor
+
+    // DSIDS methods
+    void initializeDSIDS(const Formula& formula);
+    void updateScores(int literal, const Formula& formula);
+    void decayScores();
+    int selectDSIDS(const Formula& formula);
 
     Heuristic heuristic;
 

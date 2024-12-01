@@ -1,2 +1,3 @@
 # Ignore all `.cnf` test cases in the `dat` directory
 dat/*.cnf
+generated_test_cases/*

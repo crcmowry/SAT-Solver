@@ -44,6 +44,7 @@ Heuristic parseHeuristic(const std::string& heuristicName) {
     if (heuristicName == "naive") return Heuristic::NAIVE;
     if (heuristicName == "moms") return Heuristic::MOMS;
     if (heuristicName == "dlis") return Heuristic::DLIS;
+    if (heuristicName == "dsids") return Heuristic::DSIDS;
     if (heuristicName == "random") return Heuristic::RANDOM;
     if (heuristicName == "compare") throw std::invalid_argument("--heuristic=compare is a special option.");
     throw std::invalid_argument("Unknown heuristic: " + heuristicName);
@@ -56,7 +57,7 @@ bool isInteger(const std::string& str) {
 void compareHeuristics(const SATSolver::Formula& formula, int logLevel) {
     Logger::setLevel(logLevel);
     std::vector<Heuristic> heuristics = {
-        Heuristic::NAIVE, Heuristic::MOMS, Heuristic::DLIS, Heuristic::RANDOM
+        Heuristic::NAIVE, Heuristic::MOMS, Heuristic::DLIS, Heuristic::DSIDS, Heuristic::RANDOM
     };
 
     for (size_t i = 0; i < heuristics.size(); ++i) {
