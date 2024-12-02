@@ -24,11 +24,10 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	mkdir -p $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -c $< -o $@
 
-# Run rule
-INPUT_FILE = dat/hard_3sat.cnf
-run: $(TARGET)
-	@echo "Running SATSolver with input file $(INPUT_FILE)..."
-	./$(TARGET) $(INPUT_FILE)
+# Test generation
+NUM_TESTS = 10
+generate-tests:
+	$(MAKE) -C dat NUM_TESTS=$(NUM_TESTS)
 
 # Clean rule
 clean:

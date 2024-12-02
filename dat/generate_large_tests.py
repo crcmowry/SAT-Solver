@@ -2,6 +2,8 @@ import random
 import os
 import subprocess
 import time
+import argparse
+import uuid
 
 
 def generate_random_cnf(num_vars, num_clauses, filename):
@@ -56,20 +58,21 @@ def generate_test_cases(solver_path, output_dir, num_cases=10, target_time=1.0):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    for i in range(num_cases):
+    for _ in range(num_cases):
         num_vars = 50
         clause_to_var_ratio = 4.26
         adjustment_factor = 0.1
+        unique_id = uuid.uuid4().hex[:8]  # Use the first 8 characters of a UUID
+        filename = os.path.join(output_dir, f"large_test_case_{unique_id}.cnf")
 
         while True:
             num_clauses = int(num_vars * clause_to_var_ratio)
-            filename = os.path.join(output_dir, f"test_case_{i + 1}.cnf")
             generate_random_cnf(num_vars, num_clauses, filename)
 
             runtime = measure_solver_time(solver_path, filename)
 
             if abs(runtime - target_time) < 0.1:  # Close enough to the target time
-                print(f"Generated test_case_{i + 1}.cnf: {runtime:.2f}s (vars: {num_vars}, clauses: {num_clauses})")
+                print(f"Generated {filename}: {runtime:.2f}s (vars: {num_vars}, clauses: {num_clauses})")
                 break
             elif runtime < target_time:
                 num_vars = int(num_vars * (1 + adjustment_factor))
@@ -83,10 +86,11 @@ def generate_test_cases(solver_path, output_dir, num_cases=10, target_time=1.0):
             clause_to_var_ratio = max(1.5, min(clause_to_var_ratio, 10))
 
 
-# Example Usage
-solver_binary = "./bin/SATSolver"  # Path to your SAT solver binary
-output_directory = "generated_test_cases"
-num_test_cases = 10
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate large SAT test cases.")
+    parser.add_argument("--output-dir", type=str, default="large_test_cases", help="Directory to save the generated CNF files.")
+    parser.add_argument("--num-tests", type=int, default=10, help="Number of test cases to generate.")
+    parser.add_argument("--solver-path", type=str, default="../bin/SATSolver", help="Path to the SAT solver binary.")
+    args = parser.parse_args()
 
-# Generate test cases
-generate_test_cases(solver_binary, output_directory, num_test_cases)
+    generate_test_cases(args.solver_path, args.output_dir, args.num_tests)

@@ -1,0 +1,114 @@
+# Info.txt
+
+## Project Overview
+
+This project is a SAT solver implemented in C++ with support for multiple heuristics to select variables during the solving process. The solver and supporting files are organized to facilitate easy testing, extensibility, and evaluation of heuristic performance. The project includes generators for both small traceable test cases and larger computationally intensive test cases to evaluate the solver.
+
+---
+
+## Directory Structure
+
+.
+├── bin
+│   └── SATSolver             # Compiled SAT solver binary
+├── dat
+│   ├── generate_large_tests.py    # Script to generate large test cases
+│   ├── generate_small_traceable_tests.py # Script to generate small, traceable test cases
+│   ├── large_test_cases            # Directory for large test cases
+│   ├── small_traceable_test_cases  # Directory for small traceable test cases
+├── obj
+│   ├── main.o                # Compiled object file for main.cpp
+│   └── SATSolver.o           # Compiled object file for SATSolver.cpp
+├── src
+│   ├── Logger.h              # Logging utility header
+│   ├── main.cpp              # Entry point of the SAT solver
+│   ├── SATSolver.cpp         # Implementation of the SAT solver
+│   └── SATSolver.h           # Header file for the SAT solver
+├── Makefile                  # Top-level Makefile
+└── dat/Makefile              # Makefile for generating test cases
+
+---
+
+## File Descriptions
+
+### Source Code Files (`src/`)
+- `main.cpp`: The entry point of the program. Parses command-line arguments and invokes the SAT solver.
+- `SATSolver.cpp` and `SATSolver.h`: Core implementation of the SAT solver. Includes the DPLL algorithm, variable selection heuristics, and supporting functions like propagation and backtracking.
+- `Logger.h`: Utility for configurable logging, allowing different verbosity levels.
+
+### Executable (`bin/`)
+- `bin/SATSolver`: The SAT solver binary. Accepts input files in the DIMACS CNF format and supports various heuristics.
+
+### Test Case Generators and Test Directories (`dat/`)
+- `generate_large_tests.py`: Generates computationally intensive test cases targeting ~1-second runtime per case. Output is saved in the `large_test_cases` directory.
+- `generate_small_traceable_tests.py`: Generates small test cases designed for traceability and debugging. Output is saved in the `small_traceable_test_cases` directory.
+- `dat/large_test_cases`: Directory containing large test cases in DIMACS CNF format.
+- `dat/small_traceable_test_cases`: Directory containing small, traceable test cases in DIMACS CNF format.
+
+---
+
+## Using the Makefiles
+
+### Top-Level Makefile
+- `make`: Builds the SAT solver binary (`bin/SATSolver`).
+- `make clean`: Cleans up compiled object files and the binary.
+- `make generate-tests`: Generates test cases using the scripts in the `dat/` directory.
+
+### Test Case Makefile (`dat/Makefile`)
+- `make all`: Generates both large and small test cases.
+- `make generate-large-tests`: Generates only large test cases in the `dat/large_test_cases` directory without deleting small test cases.
+- `make generate-small-tests`: Generates only small test cases in the `dat/small_traceable_test_cases` directory without deleting large test cases.
+- `make clean`: Deletes all generated test cases in both directories.
+
+---
+
+## Running the SAT Solver
+
+### Command Usage
+./bin/SATSolver <input_file> [--heuristic=<heuristic>] [--log-level=<log_level>]
+
+### Options
+- `<input_file>`: Path to a DIMACS CNF file.
+- `--heuristic=<heuristic>`: Heuristic to use for variable selection. Defaults to `naive`.
+  - Supported heuristics:
+    - `naive`: Selects the first available literal.
+    - `moms`: Maximum Occurrences in Minimum Size clauses; prioritizes variables appearing in the smallest unsatisfied clauses.
+    - `dlis`: Dynamic Largest Individual Sum; selects the literal with the highest total count of occurrences in unsatisfied clauses.
+    - `dsids`: Dynamic Scoring with Immediate Decay Sum; dynamically scores literals based on clause reductions, with decaying scores for less recent decisions.
+    - `random`: Randomly selects a variable from unsatisfied clauses. Useful for introducing diversity but lacks systematic focus.
+  - Special value: `compare` compares all heuristics sequentially on the same input.
+
+- `--log-level=<log_level>`: Verbosity level of logging. Default is `1`.
+  - `0`: Minimal output (only final result).
+  - `1`: Standard output with heuristic summaries.
+  - `2`: Detailed execution trace, including all decisions, propagations, and backtracking steps.
+  - `3`: Full trace, including the formula and assignment at the start of each call to DPLL.
+
+### Examples
+1. Solve a CNF file with the naive heuristic:
+./bin/SATSolver dat/small_traceable_test_cases/small_test_case_35f84e92.cnf --heuristic=naive
+
+2. Compare all heuristics on a test case:
+./bin/SATSolver dat/large_test_cases/large_test_case_9f1ea0ae.cnf --heuristic=compare
+
+3. Run with a specific log level for detailed debugging:
+./bin/SATSolver dat/small_traceable_test_cases/small_test_case_2.cnf --log-level=3 --heuristic=dsids
+
+---
+
+## Heuristic Descriptions
+
+1. **Naive**:  
+Selects the first unassigned variable. Simple and fast but often inefficient.
+
+2. **MOMS (Maximum Occurrences in Minimum Size clauses)**:  
+Focuses on variables in the smallest unsatisfied clauses, prioritizing literals that occur frequently in these clauses. Effective in reducing the search space.
+
+3. **DLIS (Dynamic Largest Individual Sum)**:  
+Tracks occurrences of literals (positive and negative) and selects the literal with the highest count. Aims to maximize clause satisfaction immediately.
+
+4. **DSIDS (Dynamic Scoring with Immediate Decay Sum)**:  
+Maintains dynamic scores for each literal based on the number of clauses reduced when the literal is selected. Scores decay over time to prioritize more recent decisions. Effective for adaptive solving.
+
+5. **Random**:  
+Selects a literal at random from the formula. Useful for introducing diversity but lacks systematic focus.
